@@ -70,3 +70,6 @@ textarea{resize:vertical}
 
 /* Toast */
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-weight:600;font-size:.92rem;max-width:calc(100% - 32px);z-index:50}
+
+.brand{display:inline-flex;align-items:center;gap:8px}
+.brandline{display:flex;align-items:center;gap:8px}

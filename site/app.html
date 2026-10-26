@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="manifest" href="/manifest.webmanifest">
-<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <title>Mes devis</title>
 <link rel="stylesheet" href="/style.css">
 <style>
@@ -56,10 +56,11 @@
   .sup{border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px;background:var(--surface)}
   .back{background:none;border:0;color:var(--accent);font:600 1rem var(--body);cursor:pointer;padding:4px 0;align-self:flex-start}
 </style>
+<link rel="icon" href="/logo.svg" type="image/svg+xml">
 </head>
 <body>
 <div class="wrap">
-  <div class="top"><span class="brand" id="brand"></span><button class="linkbtn" id="logout" hidden>Se déconnecter</button></div>
+  <div class="top"><span class="brand"><img src="/logo.svg" alt="" width="28" height="28"><span id="brand"></span></span><button class="linkbtn" id="logout" hidden>Se déconnecter</button></div>
 
   <!-- Connexion -->
   <section class="panel" id="v-login" hidden>
