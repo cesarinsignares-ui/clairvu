@@ -17,7 +17,7 @@ const sbHeaders = (extra = {}) => ({
 });
 
 const SYSTEM = `Tu es l'assistant d'un artisan du bâtiment en France. Tu reçois une demande de devis (texte et éventuellement photos).
-Réponds UNIQUEMENT avec un objet JSON valide, en français, sans texte autour, de cette forme :
+Réponds en appelant l'outil resume_demande, en français. Champs attendus :
 {"travail": "le besoin en 1 ou 2 phrases",
  "sur_les_photos": "ce qu'on voit réellement sur les photos, ou \\"Aucune photo\\"",
  "infos_manquantes": ["..."],
@@ -37,10 +37,30 @@ async function sb(path, init = {}) {
   return r;
 }
 
+const TOOL = {
+  name: "resume_demande",
+  description: "Enregistre le résumé structuré de la demande de devis pour l'artisan.",
+  input_schema: {
+    type: "object",
+    properties: {
+      travail: { type: "string", description: "Le besoin en 1 ou 2 phrases" },
+      sur_les_photos: { type: "string", description: "Ce qu'on voit réellement sur les photos, ou 'Aucune photo'" },
+      infos_manquantes: { type: "array", items: { type: "string" } },
+      questions: { type: "array", items: { type: "string" }, description: "3 questions maximum pour le client" },
+      materiel_probable: { type: "array", items: { type: "string" } },
+      securite: { type: "string", description: "Alerte sécurité pour l'artisan, ou chaîne vide s'il n'y a aucun danger" },
+    },
+    required: ["travail", "sur_les_photos", "infos_manquantes", "questions", "materiel_probable", "securite"],
+  },
+};
+
 function parseJson(text) {
   const a = text.indexOf("{"), b = text.lastIndexOf("}");
   if (a < 0 || b <= a) throw new Error("Réponse IA sans JSON");
-  const o = JSON.parse(text.slice(a, b + 1));
+  return normalize(JSON.parse(text.slice(a, b + 1)));
+}
+
+function normalize(o) {
   const arr = v => (Array.isArray(v) ? v.filter(x => typeof x === "string").map(x => x.slice(0, 300)).slice(0, 6) : []);
   const str = v => (typeof v === "string" && v.trim() ? v.trim().slice(0, 600) : null);
   return {
@@ -99,12 +119,23 @@ Nombre de photos jointes : ${content.length}`,
     const ai = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "x-api-key": AI_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({ model: MODEL, max_tokens: 1000, system: SYSTEM, messages: [{ role: "user", content }] }),
+      body: JSON.stringify({
+        model: MODEL, max_tokens: 1500, system: SYSTEM,
+        tools: [TOOL], tool_choice: { type: "tool", name: TOOL.name },
+        messages: [{ role: "user", content }],
+      }),
     });
     if (!ai.ok) throw new Error(`Anthropic ${ai.status}: ${(await ai.text()).slice(0, 300)}`);
     const out = await ai.json();
-    const text = (out.content || []).filter(c => c.type === "text").map(c => c.text).join("");
-    const result = parseJson(text);
+    const use = (out.content || []).find(c => c.type === "tool_use");
+    let result;
+    if (use && use.input) {
+      result = normalize(use.input);
+    } else {
+      const text = (out.content || []).filter(c => c.type === "text").map(c => c.text).join("");
+      try { result = parseJson(text); }
+      catch (e) { throw new Error(`Réponse IA illisible (stop=${out.stop_reason}) : ${text.slice(0, 200)}`); }
+    }
 
     await sb(`/rest/v1/requests?id=eq.${id}`, {
       method: "PATCH",
