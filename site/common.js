@@ -95,5 +95,37 @@
   };
   const typesFor = t => TYPES[t] || TYPES.autre;
 
-  Object.assign(window, { $, esc, eur, uuid, toast, makePicker, uploadPhotos, startAnalysis, typesFor, TRADES:Object.keys(TYPES) });
+  // Dictée vocale (micro) : ajoute un bouton « Dicter » sous un champ texte.
+  function addDictation(field){
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const wrap = document.createElement("div");
+    wrap.className = "dict";
+    if(!SR){
+      wrap.innerHTML = '<span class="hint">Pour dicter, touchez le micro de votre clavier.</span>';
+      field.insertAdjacentElement("afterend", wrap); return;
+    }
+    wrap.innerHTML = '<button type="button" class="btn ghost small mic" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span>Dicter</span></button><span class="hint live" aria-live="polite"></span>';
+    field.insertAdjacentElement("afterend", wrap);
+    const btn = wrap.querySelector("button"), lab = btn.querySelector("span"), live = wrap.querySelector(".live");
+    let rec = null, base = "", on = false;
+    const stop = () => { on = false; btn.setAttribute("aria-pressed","false"); lab.textContent = "Dicter"; live.textContent = ""; try{ rec && rec.stop(); }catch(_){} };
+    btn.onclick = () => {
+      if(on) return stop();
+      rec = new SR(); rec.lang = "fr-FR"; rec.continuous = true; rec.interimResults = true;
+      base = field.value ? field.value.replace(/\s*$/," ") : "";
+      rec.onresult = e => {
+        let fin = "", tmp = "";
+        for(let i=0;i<e.results.length;i++){ (e.results[i].isFinal ? (fin += e.results[i][0].transcript) : (tmp += e.results[i][0].transcript)); }
+        field.value = (base + fin).slice(0, field.maxLength > 0 ? field.maxLength : 2000);
+        live.textContent = tmp ? "… " + tmp : "Je vous écoute…";
+        field.dispatchEvent(new Event("input",{bubbles:true}));
+      };
+      rec.onerror = e => { stop(); toast(e.error === "not-allowed" || e.error === "service-not-allowed" ? "Autorisez le micro pour ce site dans votre navigateur." : "Dictée interrompue. Réessayez."); };
+      rec.onend = () => { if(on) stop(); };
+      try{ rec.start(); on = true; btn.setAttribute("aria-pressed","true"); lab.textContent = "Arrêter"; live.textContent = "Je vous écoute…"; }
+      catch(_){ toast("Le micro n'est pas disponible ici."); }
+    };
+  }
+
+  Object.assign(window, { $, esc, eur, uuid, toast, makePicker, uploadPhotos, startAnalysis, typesFor, addDictation, TRADES:Object.keys(TYPES) });
 })();

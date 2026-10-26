@@ -63,5 +63,10 @@ textarea{resize:vertical}
 .th .x{position:absolute;top:4px;right:4px;width:28px;height:28px;border-radius:50%;border:0;background:var(--ink);color:var(--bg);font:700 16px/1 var(--body);cursor:pointer}
 .th .sz{font-family:var(--mono);font-size:.68rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
+/* Dictée */
+.dict{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:6px}
+.mic svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2}
+.mic[aria-pressed="true"]{background:var(--warn);border-color:var(--warn);color:#fff}
+
 /* Toast */
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-weight:600;font-size:.92rem;max-width:calc(100% - 32px);z-index:50}

@@ -83,6 +83,7 @@
   $("#formbox").hidden = false;
 
   const picker = makePicker($("#picker"));
+  addDictation($("#desc"));
   const showErr = t => { $("#err").textContent = t; $("#err").hidden = !t; };
 
   $("#f").addEventListener("submit", async e=>{

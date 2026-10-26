@@ -135,8 +135,7 @@
           <div class="field"><label for="a-zone">Commune *</label><input id="a-zone" maxlength="80" required></div>
           <div class="field"><label for="a-type">Type de travaux</label><select id="a-type"></select></div>
         </div>
-        <div class="field"><label for="a-desc">Constat et travaux à prévoir *</label><textarea id="a-desc" rows="4" maxlength="2000" required></textarea>
-          <span class="hint">Astuce : touchez le micro du clavier pour dicter.</span></div>
+        <div class="field"><label for="a-desc">Constat et travaux à prévoir *</label><textarea id="a-desc" rows="4" maxlength="2000" required></textarea></div>
         <div class="field"><label for="a-mes">Mesures / repères</label><input id="a-mes" maxlength="300"></div>
         <div class="row2">
           <div class="field"><label for="a-h">Heures estimées</label><input id="a-h" type="number" min="0" step="0.5" inputmode="decimal"></div>
@@ -400,6 +399,7 @@
 
   // ---------- Relevé sur place ----------
   const sitePicker = makePicker($("#a-picker"));
+  addDictation($("#a-desc")); addDictation($("#a-mes"));
   $("#f-site").addEventListener("submit", async e=>{
     e.preventDefault();
     const v = id => $(id).value.trim();

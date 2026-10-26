@@ -2,9 +2,11 @@
 // Variables d'environnement (Netlify > Site configuration > Environment variables) :
 //   SUPABASE_URL, SUPABASE_SERVICE_KEY, ANTHROPIC_API_KEY, (facultatif) ANTHROPIC_MODEL
 
-const SB_URL = (process.env.SUPABASE_URL || "").replace(/\/+$/, "");
-const SB_KEY = process.env.SUPABASE_SERVICE_KEY || "";
-const AI_KEY = process.env.ANTHROPIC_API_KEY || "";
+// Les espaces ou retours à la ligne collés par erreur sont retirés.
+const clean = v => String(v || "").replace(/\s+/g, "");
+const SB_URL = clean(process.env.SUPABASE_URL).replace(/\/+$/, "");
+const SB_KEY = clean(process.env.SUPABASE_SERVICE_KEY);
+const AI_KEY = clean(process.env.ANTHROPIC_API_KEY);
 const MODEL = process.env.ANTHROPIC_MODEL || "claude-haiku-5-5";
 
 // Les anciennes clés (JWT "eyJ...") passent aussi en Authorization ; les nouvelles (sb_secret_...) seulement en apikey.
@@ -54,6 +56,7 @@ function parseJson(text) {
 export default async (req) => {
   if (req.method !== "POST") return;
   if (!SB_URL || !SB_KEY || !AI_KEY) { console.error("Variables d'environnement manquantes"); return; }
+  if (!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(SB_URL)) { console.error("SUPABASE_URL invalide (doit être https://xxxx.supabase.co)"); return; }
 
   let id;
   try { ({ id } = await req.json()); } catch { return; }
