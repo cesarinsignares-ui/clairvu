@@ -274,7 +274,6 @@
     if(p1.length < 8) return err("Le mot de passe doit faire au moins 8 caractères.");
     if(p1 !== p2) return err("Les deux mots de passe ne sont pas identiques.");
     if(window.ACTIVATE){
-      await sb.auth.signOut({ scope:"local" }).catch(()=>{});
       const v = await sb.auth.verifyOtp({ token_hash: window.ACTIVATE.token_hash, type: window.ACTIVATE.type });
       if(v.error) return err("Ce lien a expiré ou a déjà été utilisé. Demandez un nouveau lien à César.");
       window.ACTIVATE = null;
