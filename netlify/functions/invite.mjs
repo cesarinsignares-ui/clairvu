@@ -47,7 +47,12 @@ export default async (req) => {
     existing = true;
     res = await generate("recovery", email);
   }
-  const link = res.body.action_link || res.body.properties?.action_link;
+  // On n'envoie PAS le lien Supabase brut : WhatsApp/SMS l'ouvrent pour l'aperçu et le consomment.
+  // On envoie un lien vers l'app ; le jeton n'est validé que lorsque l'artisan choisit son mot de passe.
+  const hashed = res.body.hashed_token || res.body.properties?.hashed_token;
+  const link = hashed
+    ? `${SITE}/app#activer=${encodeURIComponent(hashed)}&t=${existing ? "recovery" : "invite"}`
+    : (res.body.action_link || res.body.properties?.action_link);
   if (!res.ok || !link) {
     console.error("generate_link", res.status, JSON.stringify(res.body).slice(0, 300));
     return json(502, { error: "Impossible de créer le lien d'accès" });

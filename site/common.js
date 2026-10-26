@@ -3,6 +3,14 @@
   const C = window.APP_CONFIG;
   // Lien d'invitation / de réinitialisation : on note son type avant que Supabase ne lise l'adresse.
   try{ window.AUTH_LINK_TYPE = new URLSearchParams(location.hash.slice(1)).get("type") || new URLSearchParams(location.search).get("type") || null; }catch(_){ window.AUTH_LINK_TYPE = null; }
+  // Lien d'activation Clairvu (#activer=…&t=invite|recovery) : on le lit puis on l'efface de l'adresse.
+  try{
+    const h = new URLSearchParams(location.hash.slice(1));
+    if(h.get("activer")){
+      window.ACTIVATE = { token_hash: h.get("activer"), type: h.get("t") === "recovery" ? "recovery" : "invite" };
+      history.replaceState(null, "", location.pathname);
+    }
+  }catch(_){ window.ACTIVATE = null; }
   window.sb = window.supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY);
 
   const $ = s => document.querySelector(s);

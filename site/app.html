@@ -223,7 +223,7 @@
   let artisan = null, requests = [], current = "req", openId = null, showArch = false, channel = null;
 
   const show = id => ["#v-login","#v-pass","#v-onboard","#v-main"].forEach(s => $(s).hidden = s !== id);
-  let needPass = window.AUTH_LINK_TYPE === "invite" || window.AUTH_LINK_TYPE === "recovery";
+  let needPass = !!window.ACTIVATE || window.AUTH_LINK_TYPE === "invite" || window.AUTH_LINK_TYPE === "recovery";
   const num = v => { const n = parseFloat(String(v).replace(",", ".")); return isNaN(n) ? null : n; };
   const slugify = s => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,40);
   const publicLink = () => location.origin + "/" + artisan.slug;
@@ -242,6 +242,7 @@
 
   // ---------- Connexion ----------
   async function boot(){
+    if(window.ACTIVATE){ $("#logout").hidden = true; show("#v-pass"); return; }
     const { data:{ session } } = await sb.auth.getSession();
     if(!session){ $("#logout").hidden = true; show("#v-login"); return; }
     $("#logout").hidden = false;
@@ -272,6 +273,12 @@
     const p1 = $("#p-1").value, p2 = $("#p-2").value;
     if(p1.length < 8) return err("Le mot de passe doit faire au moins 8 caractères.");
     if(p1 !== p2) return err("Les deux mots de passe ne sont pas identiques.");
+    if(window.ACTIVATE){
+      await sb.auth.signOut({ scope:"local" }).catch(()=>{});
+      const v = await sb.auth.verifyOtp({ token_hash: window.ACTIVATE.token_hash, type: window.ACTIVATE.type });
+      if(v.error) return err("Ce lien a expiré ou a déjà été utilisé. Demandez un nouveau lien à César.");
+      window.ACTIVATE = null;
+    }
     const { error } = await sb.auth.updateUser({ password: p1 });
     if(error) return err("Enregistrement impossible : " + error.message + ". Demandez un nouveau lien si celui-ci a expiré.");
     err(""); needPass = false; history.replaceState(null, "", "/app"); toast("Mot de passe enregistré");
