@@ -578,7 +578,7 @@
       const out = await r.json().catch(()=>({}));
       if(!r.ok) throw new Error(out.error || ("Erreur " + r.status));
       const first = name ? name.split(" ")[0] : "";
-      const msg = `Bonjour${first ? " " + first : ""}, voici votre accès à Clairvu : ${out.link}\nTouchez le lien sur votre téléphone, choisissez votre mot de passe, puis ajoutez l'application sur votre écran d'accueil. Le lien est valable 1 heure.\n${artisan.name}`;
+      const msg = `Bonjour${first ? " " + first : ""}, voici votre accès à Clairvu : ${out.link}\nTouchez le lien sur votre téléphone, choisissez votre mot de passe, puis ajoutez l'application sur votre écran d'accueil. Le lien est valable 1 heure.\nCésar · ${C.APP_NAME}`;
       $("#i-title").textContent = out.existing ? "Ce compte existait déjà : lien pour choisir un nouveau mot de passe" : "Accès créé : envoyez-lui ce message";
       $("#i-msg").textContent = msg;
       $("#i-sms").href = smsHref(phone, msg);
