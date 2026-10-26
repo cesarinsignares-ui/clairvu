@@ -73,6 +73,18 @@
     <p class="hint">Votre accès vous est fourni lors de la mise en service.</p>
   </section>
 
+  <!-- Choix du mot de passe (après un lien d'invitation) -->
+  <section class="panel" id="v-pass" hidden>
+    <h1>Bienvenue sur Clairvu</h1>
+    <p class="muted">Choisissez votre mot de passe. Vous l'utiliserez pour vous connecter à l'application.</p>
+    <form id="f-pass" novalidate>
+      <div class="field"><label for="p-1">Mot de passe (8 caractères minimum)</label><input id="p-1" type="password" autocomplete="new-password" required></div>
+      <div class="field"><label for="p-2">Confirmez le mot de passe</label><input id="p-2" type="password" autocomplete="new-password" required></div>
+      <p class="err" id="p-err" hidden></p>
+      <button class="btn" type="submit">Enregistrer et continuer</button>
+    </form>
+  </section>
+
   <!-- Première configuration -->
   <section class="panel" id="v-onboard" hidden>
     <h1>Votre entreprise</h1>
@@ -173,6 +185,25 @@
         </div>
         <button class="btn" type="submit">Enregistrer</button>
       </form>
+      <div id="admin" hidden style="display:flex;flex-direction:column;gap:12px">
+        <hr style="border:0;border-top:1px solid var(--line);margin:4px 0;width:100%">
+        <h3>Inviter un artisan</h3>
+        <p class="hint">Crée son accès et vous donne un lien à lui envoyer tout de suite par SMS ou WhatsApp. Le lien est valable environ 1 heure.</p>
+        <form id="f-inv" novalidate>
+          <div class="field"><label for="i-name">Prénom ou entreprise</label><input id="i-name" maxlength="80"></div>
+          <div class="row2">
+            <div class="field"><label for="i-email">E-mail *</label><input id="i-email" type="email" autocomplete="off" maxlength="120" required></div>
+            <div class="field"><label for="i-phone">Portable</label><input id="i-phone" type="tel" maxlength="30"></div>
+          </div>
+          <p class="err" id="i-err" hidden></p>
+          <button class="btn" type="submit" id="i-send">Créer l'accès</button>
+        </form>
+        <div class="sup" id="i-out" hidden>
+          <b id="i-title">Accès créé</b>
+          <div class="bubble" id="i-msg"></div>
+          <div class="actions"><a class="btn small" id="i-sms" href="#">SMS</a><a class="btn small" id="i-wa" href="#" target="_blank" rel="noopener">WhatsApp</a><button class="btn ghost small" id="i-copy" type="button">Copier</button></div>
+        </div>
+      </div>
       <hr style="border:0;border-top:1px solid var(--line);margin:4px 0;width:100%">
       <h3>Installer l'application</h3>
       <button class="btn ghost" id="install" type="button" hidden>Installer sur ce téléphone</button>
@@ -191,7 +222,8 @@
   const SRC = { lien:"Lien SMS", site:"Site web", artisan:"Sur place" };
   let artisan = null, requests = [], current = "req", openId = null, showArch = false, channel = null;
 
-  const show = id => ["#v-login","#v-onboard","#v-main"].forEach(s => $(s).hidden = s !== id);
+  const show = id => ["#v-login","#v-pass","#v-onboard","#v-main"].forEach(s => $(s).hidden = s !== id);
+  let needPass = window.AUTH_LINK_TYPE === "invite" || window.AUTH_LINK_TYPE === "recovery";
   const num = v => { const n = parseFloat(String(v).replace(",", ".")); return isNaN(n) ? null : n; };
   const slugify = s => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,40);
   const publicLink = () => location.origin + "/" + artisan.slug;
@@ -213,6 +245,7 @@
     const { data:{ session } } = await sb.auth.getSession();
     if(!session){ $("#logout").hidden = true; show("#v-login"); return; }
     $("#logout").hidden = false;
+    if(needPass){ show("#v-pass"); return; }
     const { data, error } = await sb.from("artisans").select("*").maybeSingle();
     if(error){ toast("Erreur de chargement : " + error.message); return; }
     if(!data){
@@ -231,6 +264,19 @@
     boot();
   });
   $("#logout").onclick = async ()=>{ if(channel) sb.removeChannel(channel); await sb.auth.signOut(); location.reload(); };
+
+  // ---------- Choix du mot de passe ----------
+  $("#f-pass").addEventListener("submit", async e=>{
+    e.preventDefault();
+    const err = t => { $("#p-err").textContent = t; $("#p-err").hidden = !t; };
+    const p1 = $("#p-1").value, p2 = $("#p-2").value;
+    if(p1.length < 8) return err("Le mot de passe doit faire au moins 8 caractères.");
+    if(p1 !== p2) return err("Les deux mots de passe ne sont pas identiques.");
+    const { error } = await sb.auth.updateUser({ password: p1 });
+    if(error) return err("Enregistrement impossible : " + error.message + ". Demandez un nouveau lien si celui-ci a expiré.");
+    err(""); needPass = false; history.replaceState(null, "", "/app"); toast("Mot de passe enregistré");
+    boot();
+  });
 
   // ---------- Première configuration ----------
   let slugTouched = false;
@@ -257,7 +303,7 @@
     show("#v-main");
     document.title = "Devis · " + artisan.name;
     fill($("#a-type"), typesFor(artisan.trade));
-    fillSettings(); initSms();
+    fillSettings(); initSms(); initAdmin();
     tab("req"); load();
     channel = sb.channel("req-" + artisan.id)
       .on("postgres_changes", { event:"*", schema:"public", table:"requests", filter:"artisan_id=eq." + artisan.id }, ()=>load())
@@ -511,6 +557,36 @@
     const { data, error } = await sb.from("artisans").update(patch).eq("id", artisan.id).select().single();
     if(error) return toast("Enregistrement impossible : " + error.message);
     artisan = data; fill($("#a-type"), typesFor(artisan.trade)); smsEdited = false; initSms(); toast("Réglages enregistrés");
+  });
+
+  // ---------- Inviter un artisan (admin) ----------
+  async function initAdmin(){
+    const { data:{ user } } = await sb.auth.getUser();
+    const admins = (C.ADMIN_EMAILS || []).map(x => x.toLowerCase());
+    if(!user || !admins.includes(String(user.email||"").toLowerCase())) return;
+    $("#admin").hidden = false;
+  }
+  $("#f-inv").addEventListener("submit", async e=>{
+    e.preventDefault();
+    const err = t => { $("#i-err").textContent = t; $("#i-err").hidden = !t; };
+    const name = $("#i-name").value.trim(), email = $("#i-email").value.trim(), phone = $("#i-phone").value.trim();
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return err("Indiquez une adresse e-mail valide.");
+    err(""); const btn = $("#i-send"); btn.disabled = true; btn.textContent = "Création…";
+    try{
+      const { data:{ session } } = await sb.auth.getSession();
+      const r = await fetch("/.netlify/functions/invite", { method:"POST", headers:{ "content-type":"application/json", authorization:"Bearer " + (session && session.access_token) }, body: JSON.stringify({ email, name }) });
+      const out = await r.json().catch(()=>({}));
+      if(!r.ok) throw new Error(out.error || ("Erreur " + r.status));
+      const first = name ? name.split(" ")[0] : "";
+      const msg = `Bonjour${first ? " " + first : ""}, voici votre accès à Clairvu : ${out.link}\nTouchez le lien sur votre téléphone, choisissez votre mot de passe, puis ajoutez l'application sur votre écran d'accueil. Le lien est valable 1 heure.\n${artisan.name}`;
+      $("#i-title").textContent = out.existing ? "Ce compte existait déjà : lien pour choisir un nouveau mot de passe" : "Accès créé : envoyez-lui ce message";
+      $("#i-msg").textContent = msg;
+      $("#i-sms").href = smsHref(phone, msg);
+      $("#i-wa").href = "https://wa.me/" + (phone ? intlPhone(phone) : "") + "?text=" + encodeURIComponent(msg);
+      $("#i-copy").onclick = () => copy(msg, "Message copié");
+      $("#i-out").hidden = false;
+    }catch(ex){ err("Invitation impossible : " + ex.message); }
+    finally{ btn.disabled = false; btn.textContent = "Créer l'accès"; }
   });
 
   // ---------- Installation (PWA) ----------

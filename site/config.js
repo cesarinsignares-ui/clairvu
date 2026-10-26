@@ -13,6 +13,9 @@ window.APP_CONFIG = {
   // Durée de conservation des demandes, affichée au client (à faire valider)
   RETENTION: "12 mois",
 
+  // Comptes qui peuvent inviter de nouveaux artisans (le serveur vérifie aussi)
+  ADMIN_EMAILS: ["cesar_insignares@hotmail.com"],
+
   // Votre contact pour les questions RGPD (affiché au client)
   CONTACT_EMAIL: "contact@exemple.fr"
 };

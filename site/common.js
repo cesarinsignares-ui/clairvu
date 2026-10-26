@@ -1,6 +1,8 @@
 // Outils partagés : connexion Supabase, réduction des photos, sélecteur de photos.
 (function(){
   const C = window.APP_CONFIG;
+  // Lien d'invitation / de réinitialisation : on note son type avant que Supabase ne lise l'adresse.
+  try{ window.AUTH_LINK_TYPE = new URLSearchParams(location.hash.slice(1)).get("type") || new URLSearchParams(location.search).get("type") || null; }catch(_){ window.AUTH_LINK_TYPE = null; }
   window.sb = window.supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY);
 
   const $ = s => document.querySelector(s);
