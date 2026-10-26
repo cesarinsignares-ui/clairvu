@@ -44,10 +44,16 @@
   .qrow.tot{font-weight:700;border-bottom:0;font-size:1.05rem}
   .qin{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
   .qin input{width:72px;padding:6px 8px}
-  .m{font-family:var(--mono);white-space:nowrap;font-variant-numeric:tabular-nums}
+  .m{font-family:var(--mono);white-space:nowrap;font-variant-numeric:tabular-nums;text-align:right}
   .todo{color:var(--warn);font-style:italic}
   .bubble{background:var(--soft);border-radius:14px 14px 14px 4px;padding:12px 14px;font-size:.95rem;white-space:pre-wrap;overflow-wrap:anywhere}
   .linkbox{font-family:var(--mono);font-size:.85rem;background:var(--soft);padding:8px 10px;border-radius:8px;overflow-wrap:anywhere}
+  .mats{display:flex;flex-direction:column;gap:6px}
+  .mrow{display:grid;grid-template-columns:50px 1fr 72px 28px;gap:6px;align-items:center}
+  .mrow input{padding:7px 8px;min-width:0}
+  .mrow .del{border:0;background:none;color:var(--muted);font:700 20px/1 var(--body);cursor:pointer;padding:4px}
+  .mhead{display:grid;grid-template-columns:50px 1fr 72px 28px;gap:6px;font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+  .sup{border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px;background:var(--surface)}
   .back{background:none;border:0;color:var(--accent);font:600 1rem var(--body);cursor:pointer;padding:4px 0;align-self:flex-start}
 </style>
 </head>
@@ -137,11 +143,8 @@
         </div>
         <div class="field"><label for="a-desc">Constat et travaux à prévoir *</label><textarea id="a-desc" rows="4" maxlength="2000" required></textarea></div>
         <div class="field"><label for="a-mes">Mesures / repères</label><input id="a-mes" maxlength="300"></div>
-        <div class="row2">
-          <div class="field"><label for="a-h">Heures estimées</label><input id="a-h" type="number" min="0" step="0.5" inputmode="decimal"></div>
-          <div class="field"><label for="a-matp">Matériel HT (€)</label><input id="a-matp" type="number" min="0" step="1" inputmode="decimal"></div>
-        </div>
-        <div class="field"><label for="a-matd">Matériel (détail)</label><input id="a-matd" maxlength="300"></div>
+        <div class="field"><label for="a-h">Heures estimées</label><input id="a-h" type="number" min="0" step="0.5" inputmode="decimal" style="max-width:140px"></div>
+        <div class="field"><span style="font-weight:600;font-size:.92rem">Matériel à prévoir</span><div id="a-mats"></div></div>
         <div class="picker" id="a-picker"></div>
         <label class="check"><input type="checkbox" id="a-ok"> <span>Le client sait que ces informations et photos sont enregistrées pour préparer son devis.</span></label>
         <p class="err" id="a-err" hidden></p>
@@ -160,6 +163,13 @@
         <div class="row2">
           <div class="field"><label for="r-rate">Taux horaire HT (€)</label><input id="r-rate" type="number" min="0" step="1" inputmode="decimal"></div>
           <div class="field"><label for="r-travel">Déplacement HT (€)</label><input id="r-travel" type="number" min="0" step="1" inputmode="decimal"></div>
+        </div>
+        <h3 style="margin-top:8px">Mon fournisseur de matériel</h3>
+        <p class="hint">Pour lui envoyer une liste de matériel en un geste depuis une demande.</p>
+        <div class="field"><label for="r-sup-name">Nom (ex. Rexel Villefranche)</label><input id="r-sup-name" maxlength="80"></div>
+        <div class="row2">
+          <div class="field"><label for="r-sup-phone">Téléphone / WhatsApp</label><input id="r-sup-phone" type="tel" maxlength="30"></div>
+          <div class="field"><label for="r-sup-email">E-mail</label><input id="r-sup-email" type="email" maxlength="120"></div>
         </div>
         <button class="btn" type="submit">Enregistrer</button>
       </form>
@@ -299,8 +309,11 @@
     const ai = r.ai || {};
     const rate = num(artisan.rate_hour), travel = num(artisan.travel_fee) || 0;
     const mo = (r.hours != null && rate != null) ? r.hours * rate : null;
-    const total = travel + (mo || 0) + (num(r.material_price) || 0);
-    const missing = mo == null || r.material_price == null;
+    const mats = materialsOf(r);
+    const matTotal = mats.reduce((t,l)=> t + (l.price != null ? (num(l.qty) ?? 1) * l.price : 0), 0);
+    const total = travel + (mo || 0) + matTotal;
+    const missing = mo == null || mats.some(l=>l.price == null);
+    const suggested = (Array.isArray(ai.materiel_probable) ? ai.materiel_probable : []).filter(x => x && !mats.some(l => l.label.toLowerCase() === x.toLowerCase()));
     const questions = Array.isArray(ai.questions) ? ai.questions.filter(Boolean) : [];
 
     let aiHtml;
@@ -311,7 +324,7 @@
         ${ai.travail ? `<p><b>${esc(ai.travail)}</b></p>` : ""}
         ${ai.sur_les_photos ? `<p><span class="muted">Sur les photos :</span> ${esc(ai.sur_les_photos)}</p>` : ""}
         ${Array.isArray(ai.infos_manquantes) && ai.infos_manquantes.length ? `<div><span class="muted">Informations manquantes :</span><ul>${ai.infos_manquantes.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>` : ""}
-        ${Array.isArray(ai.materiel_probable) && ai.materiel_probable.length ? `<div><span class="muted">Matériel à prévoir (indicatif) :</span><ul>${ai.materiel_probable.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>` : ""}
+        ${Array.isArray(ai.materiel_probable) && ai.materiel_probable.length ? `<div><span class="muted">Matériel à prévoir (indicatif) :</span><ul>${ai.materiel_probable.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>${suggested.length ? `<div class="actions" style="margin-top:6px"><button class="btn ghost small" id="addSugg" type="button">Ajouter ce matériel au brouillon</button></div>` : ""}</div>` : `<p class="hint">Aucun matériel suggéré pour cette demande.</p>`}
         ${questions.length ? `<div><span class="muted">Questions à poser au client :</span><ul>${questions.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>
           <div class="actions"><a class="btn ghost small" id="askSms" href="#">Envoyer ces questions par SMS</a></div>` : ""}
       </div>`;
@@ -339,8 +352,17 @@
         <div class="q">
           <div class="qrow"><span>Déplacement <span class="hint">forfait</span></span><span class="m">${artisan.travel_fee != null ? eur(travel) : '<span class="todo">tarif à régler</span>'}</span></div>
           <div class="qrow"><span class="qin">Main-d'œuvre <input id="d-h" type="number" min="0" step="0.5" inputmode="decimal" value="${r.hours ?? ""}" placeholder="h" aria-label="Heures"> h ${rate != null ? "× " + eur(rate) : '<span class="todo">taux à régler</span>'}</span><span class="m">${mo != null ? eur(mo) : '<span class="todo">à compléter</span>'}</span></div>
-          <div class="qrow"><span class="qin">Matériel <input id="d-mp" type="number" min="0" step="1" inputmode="decimal" value="${r.material_price ?? ""}" placeholder="€" aria-label="Prix du matériel HT"> €</span><span class="m">${r.material_price != null ? eur(r.material_price) : '<span class="todo">à compléter</span>'}</span></div>
-          <input id="d-md" maxlength="300" value="${esc(r.material_desc ?? "")}" placeholder="Détail du matériel" aria-label="Détail du matériel">
+          <div class="qrow"><span>Matériel</span><span class="m">${mats.length ? eur(matTotal) + (mats.some(l=>l.price==null) ? '<br><span class="todo" style="font-size:.78rem;font-family:var(--body)">prix à compléter</span>' : "") : '<span class="hint">aucun</span>'}</span></div>
+          <div id="d-mats"></div>
+          <div class="sup" id="d-sup" ${mats.length ? "" : "hidden"}>
+            <b>Demander un prix à mon fournisseur</b>
+            ${artisan.supplier_name || artisan.supplier_phone || artisan.supplier_email ? `<span class="hint">${esc(artisan.supplier_name || "Fournisseur")}</span>` : `<span class="hint">Ajoutez votre fournisseur dans Réglages pour l'envoyer en un geste.</span>`}
+            <div class="actions">
+              ${artisan.supplier_phone ? `<a class="btn small" id="supSms" href="#">SMS</a><a class="btn small" id="supWa" href="#" target="_blank" rel="noopener">WhatsApp</a>` : ""}
+              ${artisan.supplier_email ? `<a class="btn small" id="supMail" href="#">E-mail</a>` : ""}
+              <button class="btn ghost small" id="supCopy" type="button">Copier la liste</button>
+            </div>
+          </div>
           <div class="qrow tot"><span>Total estimé HT</span><span class="m">${eur(total)}</span></div>
           ${missing ? '<p class="todo" style="font-size:.85rem">Des postes restent à compléter.</p>' : ""}
         </div>
@@ -360,7 +382,7 @@
       const lines = [`Estimation – ${artisan.name}`, `Pour : ${r.client_name}, ${r.zone}`, `Travaux : ${ai.travail || r.work_type || r.description.slice(0,120)}`, ""];
       if(artisan.travel_fee != null) lines.push(`- Déplacement : ${eur(travel)}`);
       if(mo != null) lines.push(`- Main-d'œuvre : ${String(r.hours).replace(".",",")} h × ${eur(rate)} = ${eur(mo)}`);
-      if(r.material_price != null) lines.push(`- Matériel${r.material_desc ? " (" + r.material_desc + ")" : ""} : ${eur(r.material_price)}`);
+      mats.filter(l=>l.price != null).forEach(l => { const q = num(l.qty) ?? 1; lines.push(`- ${l.label}${q !== 1 ? " (" + String(q).replace(".",",") + " × " + eur(l.price) + ")" : ""} : ${eur(q * l.price)}`); });
       lines.push("", `Total estimé HT : ${eur(total)}`, "Estimation indicative, le devis définitif suit.");
       return lines.join("\n");
     };
@@ -368,8 +390,15 @@
     const save = async patch => { const { error } = await sb.from("requests").update(patch).eq("id", r.id); if(error){ toast("Enregistrement impossible : " + error.message); return false; } Object.assign(r, patch); return true; };
     const saveAndShow = async patch => { if(await save(patch)) renderDetail(false); };
     $("#d-h").onchange = e => saveAndShow({ hours: num(e.target.value) });
-    $("#d-mp").onchange = e => saveAndShow({ material_price: num(e.target.value) });
-    $("#d-md").onchange = e => saveAndShow({ material_desc: e.target.value.trim() || null });
+    const saveMats = list => saveAndShow({ materials: list, material_price: null, material_desc: null });
+    matEditor($("#d-mats"), mats, saveMats);
+    const sg = $("#addSugg"); if(sg) sg.onclick = () => saveMats(mats.concat(suggested.map(x => ({ label: x.slice(0,120), qty: 1, price: null }))));
+    const supMsg = () => `Bonjour, c'est ${artisan.name}. Pouvez-vous me faire un prix et me dire la disponibilité pour :\n` +
+      mats.map(l => `- ${String(num(l.qty) ?? 1).replace(".",",")} × ${l.label}`).join("\n") + `\nChantier à ${r.zone}. Merci !`;
+    if($("#supSms")) $("#supSms").href = smsHref(artisan.supplier_phone, supMsg());
+    if($("#supWa")) $("#supWa").href = "https://wa.me/" + intlPhone(artisan.supplier_phone) + "?text=" + encodeURIComponent(supMsg());
+    if($("#supMail")) $("#supMail").href = "mailto:" + encodeURIComponent(artisan.supplier_email) + "?subject=" + encodeURIComponent("Demande de prix – " + artisan.name) + "&body=" + encodeURIComponent(supMsg());
+    $("#supCopy").onclick = () => copy(supMsg(), "Liste copiée");
     $("#devSms").href = smsHref(r.client_phone, `Bonjour ${firstName},\n\n` + estimate());
     $("#devCopy").onclick = ()=>copy(estimate(), "Estimation copiée");
     const ask = $("#askSms"); if(ask) ask.href = smsHref(r.client_phone, `Bonjour ${firstName}, c'est ${artisan.name}. Pour préparer votre devis, pouvez-vous me préciser :\n- ` + questions.join("\n- ") + "\nMerci !");
@@ -379,6 +408,46 @@
     st("markNew", { status:"nouveau" }, "Remise en nouveau");
     st("arch", { status:"archive" }, "Demande archivée");
     st("unarch", { status:"nouveau" }, "Demande désarchivée");
+  }
+
+  // ---------- Matériel : lignes ----------
+  function materialsOf(r){
+    if(Array.isArray(r.materials)) return r.materials.map(l => ({ label: String(l.label||""), qty: num(l.qty) ?? 1, price: num(l.price) }));
+    if(r.material_price != null || r.material_desc) return [{ label: r.material_desc || "Matériel", qty: 1, price: num(r.material_price) }];
+    return [];
+  }
+  function intlPhone(p){
+    let d = String(p||"").replace(/[^\d+]/g,"");
+    if(d.startsWith("+")) return d.slice(1);
+    if(d.startsWith("00")) return d.slice(2);
+    if(d.length === 10 && d.startsWith("0")) return "33" + d.slice(1);
+    return d;
+  }
+  // Éditeur de lignes : quantité, désignation, prix unitaire HT. onSave(list) appelé après chaque modification.
+  function matEditor(root, initial, onSave){
+    let rows = initial.map(l => ({ ...l }));
+    const clean = () => rows.filter(l => l.label.trim()).map(l => ({ label: l.label.trim().slice(0,120), qty: num(l.qty) ?? 1, price: num(l.price) }));
+    const draw = () => {
+      root.innerHTML = `<div class="mats">
+        ${rows.length ? '<div class="mhead"><span>Qté</span><span>Désignation</span><span>Prix u. HT</span><span></span></div>' : ""}
+        ${rows.map((l,i) => `<div class="mrow" data-i="${i}">
+          <input type="number" min="0" step="any" inputmode="decimal" value="${l.qty ?? ""}" aria-label="Quantité" data-k="qty">
+          <input maxlength="120" value="${esc(l.label)}" placeholder="ex. Disjoncteur 20 A" aria-label="Désignation" data-k="label">
+          <input type="number" min="0" step="any" inputmode="decimal" value="${l.price ?? ""}" placeholder="€" aria-label="Prix unitaire HT" data-k="price">
+          <button type="button" class="del" aria-label="Supprimer la ligne">×</button></div>`).join("")}
+        <button type="button" class="linkbtn add">+ Ajouter une ligne</button></div>`;
+      root.querySelectorAll(".mrow").forEach(row => {
+        const i = +row.dataset.i;
+        row.querySelectorAll("input").forEach(inp => inp.onchange = () => {
+          const k = inp.dataset.k; rows[i][k] = k === "label" ? inp.value : (inp.value === "" ? null : num(inp.value));
+          if(onSave && rows[i].label.trim()) onSave(clean());
+        });
+        row.querySelector(".del").onclick = () => { rows.splice(i,1); draw(); if(onSave) onSave(clean()); };
+      });
+      root.querySelector(".add").onclick = () => { rows.push({ label:"", qty:1, price:null }); draw(); const last = root.querySelectorAll('.mrow input[data-k="label"]'); last[last.length-1].focus(); };
+    };
+    draw();
+    return { get: clean, reset: () => { rows = []; draw(); } };
   }
 
   // ---------- Lien par SMS ----------
@@ -400,6 +469,7 @@
   // ---------- Relevé sur place ----------
   const sitePicker = makePicker($("#a-picker"));
   addDictation($("#a-desc")); addDictation($("#a-mes"));
+  const siteMats = matEditor($("#a-mats"), [], null);
   $("#f-site").addEventListener("submit", async e=>{
     e.preventDefault();
     const v = id => $(id).value.trim();
@@ -415,12 +485,12 @@
         id, artisan_id: artisan.id, source:"artisan",
         client_name:v("#a-nom"), client_phone:v("#a-tel"), zone:v("#a-zone"), work_type:$("#a-type").value,
         description:v("#a-desc"), measures:v("#a-mes") || null, urgency:"À planifier",
-        hours:num(v("#a-h")), material_desc:v("#a-matd") || null, material_price:num(v("#a-matp")),
+        hours:num(v("#a-h")), materials: siteMats.get(),
         photos:paths, consent:true
       });
       if(error) throw new Error(error.message);
       startAnalysis(id);
-      $("#f-site").reset(); sitePicker.reset();
+      $("#f-site").reset(); sitePicker.reset(); siteMats.reset();
       toast("Relevé enregistré");
       await load(); openId = id; tab("req"); renderDetail(true);
     }catch(ex){ err("Enregistrement impossible : " + ex.message); }
@@ -431,11 +501,13 @@
   function fillSettings(){
     $("#r-name").value = artisan.name; fill($("#r-trade"), TRADES, artisan.trade);
     $("#r-phone").value = artisan.phone || ""; $("#r-rate").value = artisan.rate_hour ?? ""; $("#r-travel").value = artisan.travel_fee ?? "";
+    $("#r-sup-name").value = artisan.supplier_name || ""; $("#r-sup-phone").value = artisan.supplier_phone || ""; $("#r-sup-email").value = artisan.supplier_email || "";
   }
   $("#f-set").addEventListener("submit", async e=>{
     e.preventDefault();
     const patch = { name:$("#r-name").value.trim() || artisan.name, trade:$("#r-trade").value, phone:$("#r-phone").value.trim() || null,
-      rate_hour:num($("#r-rate").value), travel_fee:num($("#r-travel").value) };
+      rate_hour:num($("#r-rate").value), travel_fee:num($("#r-travel").value),
+      supplier_name:$("#r-sup-name").value.trim() || null, supplier_phone:$("#r-sup-phone").value.trim() || null, supplier_email:$("#r-sup-email").value.trim() || null };
     const { data, error } = await sb.from("artisans").update(patch).eq("id", artisan.id).select().single();
     if(error) return toast("Enregistrement impossible : " + error.message);
     artisan = data; fill($("#a-type"), typesFor(artisan.trade)); smsEdited = false; initSms(); toast("Réglages enregistrés");
