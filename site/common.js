@@ -107,24 +107,42 @@
     wrap.innerHTML = '<button type="button" class="btn ghost small mic" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span>Dicter</span></button><span class="hint live" aria-live="polite"></span>';
     field.insertAdjacentElement("afterend", wrap);
     const btn = wrap.querySelector("button"), lab = btn.querySelector("span"), live = wrap.querySelector(".live");
-    let rec = null, base = "", on = false;
-    const stop = () => { on = false; btn.setAttribute("aria-pressed","false"); lab.textContent = "Dicter"; live.textContent = ""; try{ rec && rec.stop(); }catch(_){} };
+    let rec = null, committed = "", on = false;
+    const join = (a, b) => {
+      b = (b || "").trim(); if(!b) return a;
+      if(!a.trim() || /[.!?]\s*$/.test(a)) b = b.charAt(0).toUpperCase() + b.slice(1);
+      return a ? a.replace(/\s*$/, " ") + b : b;
+    };
+    const max = field.maxLength > 0 ? field.maxLength : 2000;
+    const stop = () => { on = false; btn.setAttribute("aria-pressed","false"); lab.textContent = "Dicter"; live.textContent = ""; try{ rec && rec.abort(); }catch(_){} rec = null; };
+    // Une phrase à la fois (évite les mots répétés d'Android/iOS), relancée tant que « Arrêter » n'est pas touché.
+    const listen = () => {
+      rec = new SR(); rec.lang = "fr-FR"; rec.continuous = false; rec.interimResults = true; rec.maxAlternatives = 1;
+      rec.onresult = e => {
+        const r = e.results[e.results.length - 1];
+        const txt = r[0].transcript;
+        if(r.isFinal){
+          committed = join(committed, txt).slice(0, max);
+          field.value = committed; live.textContent = "Je vous écoute…";
+          field.dispatchEvent(new Event("input",{bubbles:true}));
+        } else {
+          live.textContent = "… " + txt.trim();
+        }
+      };
+      rec.onerror = e => {
+        if(e.error === "no-speech" || e.error === "aborted") return;
+        stop(); toast(e.error === "not-allowed" || e.error === "service-not-allowed" ? "Autorisez le micro pour ce site dans votre navigateur." : "Dictée interrompue. Réessayez.");
+      };
+      rec.onend = () => { if(on) setTimeout(() => { if(on){ try{ listen(); }catch(_){ stop(); } } }, 150); };
+      rec.start();
+    };
     btn.onclick = () => {
       if(on) return stop();
-      rec = new SR(); rec.lang = "fr-FR"; rec.continuous = true; rec.interimResults = true;
-      base = field.value ? field.value.replace(/\s*$/," ") : "";
-      rec.onresult = e => {
-        let fin = "", tmp = "";
-        for(let i=0;i<e.results.length;i++){ (e.results[i].isFinal ? (fin += e.results[i][0].transcript) : (tmp += e.results[i][0].transcript)); }
-        field.value = (base + fin).slice(0, field.maxLength > 0 ? field.maxLength : 2000);
-        live.textContent = tmp ? "… " + tmp : "Je vous écoute…";
-        field.dispatchEvent(new Event("input",{bubbles:true}));
-      };
-      rec.onerror = e => { stop(); toast(e.error === "not-allowed" || e.error === "service-not-allowed" ? "Autorisez le micro pour ce site dans votre navigateur." : "Dictée interrompue. Réessayez."); };
-      rec.onend = () => { if(on) stop(); };
-      try{ rec.start(); on = true; btn.setAttribute("aria-pressed","true"); lab.textContent = "Arrêter"; live.textContent = "Je vous écoute…"; }
-      catch(_){ toast("Le micro n'est pas disponible ici."); }
+      committed = field.value || "";
+      try{ on = true; listen(); btn.setAttribute("aria-pressed","true"); lab.textContent = "Arrêter"; live.textContent = "Je vous écoute…"; }
+      catch(_){ stop(); toast("Le micro n'est pas disponible ici."); }
     };
+    field.addEventListener("input", e => { if(!on && e.isTrusted) committed = field.value; });
   }
 
   Object.assign(window, { $, esc, eur, uuid, toast, makePicker, uploadPhotos, startAnalysis, typesFor, addDictation, TRADES:Object.keys(TYPES) });
