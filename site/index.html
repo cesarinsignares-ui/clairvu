@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Devis avec photos pour artisans</title>
+<link rel="stylesheet" href="/style.css">
+<style>
+  .hero{display:flex;flex-direction:column;gap:10px;padding-block:12px}
+  .steps{display:grid;gap:10px;margin:0;padding:0;list-style:none;counter-reset:s}
+  .steps li{counter-increment:s;display:grid;grid-template-columns:32px 1fr;gap:10px;align-items:start}
+  .steps li::before{content:counter(s);font-family:var(--display);font-weight:700;font-size:1.2rem;width:32px;height:32px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center}
+  footer{font-size:.78rem;color:var(--muted);text-align:center}
+  footer a{color:inherit}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <section class="hero">
+    <p class="eyebrow" id="brand"></p>
+    <h1>Vos clients envoient les photos. Vous arrivez préparé.</h1>
+    <p class="muted">Un lien à envoyer par SMS après un appel, un bouton sur votre site, et un relevé sur place depuis votre téléphone. Chaque demande arrive triée, avec un brouillon d'estimation à valider.</p>
+    <div class="actions"><a class="btn" href="/app">Espace artisan</a></div>
+  </section>
+  <section class="panel">
+    <h2>Comment ça marche</h2>
+    <ol class="steps">
+      <li><span>Après un appel, vous envoyez votre lien par SMS au client que vous choisissez.</span></li>
+      <li><span>Le client décrit le problème et ajoute 2 ou 3 photos en 2 minutes, sans rien installer.</span></li>
+      <li><span>Vous recevez la demande résumée, avec les questions à poser et un brouillon d'estimation calculé avec vos tarifs.</span></li>
+      <li><span>Vous vérifiez et vous envoyez. Rien ne part sans vous.</span></li>
+    </ol>
+  </section>
+  <footer><a href="/mentions.html">Mentions légales et données personnelles</a></footer>
+</div>
+<script src="/config.js"></script>
+<script>document.getElementById("brand").textContent = window.APP_CONFIG.APP_NAME;</script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+# L'application de l'artisan
+/app        /app.html     200
+/app/*      /app.html     200
+# Lien public d'un artisan : monsite.fr/nom-artisan
+/:slug      /client.html  200

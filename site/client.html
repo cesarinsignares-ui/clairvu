@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Demande de devis</title>
+<link rel="stylesheet" href="/style.css">
+<style>
+  header{display:flex;flex-direction:column;gap:6px}
+  footer{font-size:.78rem;color:var(--muted);text-align:center}
+  footer a{color:inherit}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow" id="trade">Demande de devis</p>
+    <h1 id="title">Chargement…</h1>
+    <p class="muted" id="lead">Décrivez votre besoin et ajoutez quelques photos. Cela prend 2 minutes.</p>
+  </header>
+
+  <section class="panel" id="notfound" hidden>
+    <h2>Lien introuvable</h2>
+    <p>Ce lien de demande de devis n'existe pas ou n'est plus actif. Vérifiez l'adresse reçue par SMS ou contactez directement votre artisan.</p>
+  </section>
+
+  <section class="panel" id="formbox" hidden>
+    <form id="f" novalidate>
+      <div class="row2">
+        <div class="field"><label for="nom">Nom *</label><input id="nom" autocomplete="name" maxlength="80" required></div>
+        <div class="field"><label for="tel">Téléphone *</label><input id="tel" type="tel" autocomplete="tel" maxlength="30" required></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label for="zone">Commune *</label><input id="zone" autocomplete="address-level2" maxlength="80" required></div>
+        <div class="field"><label for="type">Type de travaux *</label><select id="type"></select></div>
+      </div>
+      <div class="field"><label for="desc">Décrivez le problème *</label><textarea id="desc" rows="4" maxlength="2000" required placeholder="Ex. : le disjoncteur saute quand j'allume le four."></textarea></div>
+      <div class="row2">
+        <div class="field"><label for="urg">Urgence *</label><select id="urg"><option>Aujourd'hui</option><option selected>Cette semaine</option><option>Pas pressé</option></select></div>
+        <div class="field"><label for="mail">E-mail (facultatif)</label><input id="mail" type="email" autocomplete="email" maxlength="120"></div>
+      </div>
+      <div class="picker" id="picker"></div>
+      <label class="check"><input type="checkbox" id="rgpd"> <span>J'accepte que mes coordonnées, ma description et mes photos soient transmises à <b class="aname"></b> pour préparer mon devis.</span></label>
+      <p class="legal" id="legal"></p>
+      <p class="err" id="err" role="alert" hidden></p>
+      <button class="btn" type="submit" id="send">Envoyer ma demande</button>
+    </form>
+  </section>
+
+  <section class="confirm" id="done" hidden>
+    <h2>Demande envoyée</h2>
+    <p id="donetxt"></p>
+    <p class="hint">Aucun prix n'est engagé à ce stade. L'artisan vous recontacte pour confirmer.</p>
+  </section>
+
+  <footer><span id="powered"></span> · <a href="/mentions.html">Mentions légales et données personnelles</a></footer>
+</div>
+
+<script src="/config.js"></script>
+<script src="/vendor/supabase-2.117.2.js"></script>
+<script src="/common.js"></script>
+<script>
+(async function(){
+  const C = window.APP_CONFIG;
+  $("#powered").textContent = "Service " + C.APP_NAME;
+  const slug = decodeURIComponent(location.pathname.replace(/^\/+|\/+$/g,"").split("/")[0] || "").toLowerCase();
+  const source = new URLSearchParams(location.search).get("s") === "sms" ? "lien" : "site";
+
+  let artisan = null;
+  if(/^[a-z0-9-]{3,40}$/.test(slug)){
+    const { data, error } = await sb.rpc("get_artisan", { p_slug: slug });
+    if(!error && data && data.length) artisan = data[0];
+  }
+  if(!artisan){ $("#title").textContent = "Demande de devis"; $("#lead").hidden = true; $("#notfound").hidden = false; return; }
+
+  document.title = "Devis · " + artisan.name;
+  $("#title").textContent = artisan.name;
+  $("#trade").textContent = "Demande de devis" + (artisan.trade && artisan.trade !== "autre" ? " · " + artisan.trade : "");
+  document.querySelectorAll(".aname").forEach(el => el.textContent = artisan.name);
+  $("#legal").textContent = `Responsable du traitement : ${artisan.name}. Vos données servent uniquement à préparer et suivre votre devis, et sont conservées ${C.RETENTION} au maximum. Vous pouvez demander leur consultation ou leur suppression à ${C.CONTACT_EMAIL}.`;
+  $("#type").innerHTML = typesFor(artisan.trade).map(t=>`<option>${esc(t)}</option>`).join("");
+  $("#formbox").hidden = false;
+
+  const picker = makePicker($("#picker"));
+  const showErr = t => { $("#err").textContent = t; $("#err").hidden = !t; };
+
+  $("#f").addEventListener("submit", async e=>{
+    e.preventDefault(); showErr("");
+    const v = id => $(id).value.trim();
+    if(!v("#nom") || !v("#tel") || !v("#zone") || v("#desc").length < 3) return showErr("Merci de remplir les champs marqués d'un *.");
+    if(v("#tel").replace(/\D/g,"").length < 9) return showErr("Le numéro de téléphone semble incomplet.");
+    if(!$("#rgpd").checked) return showErr("Cochez la case d'accord pour envoyer votre demande.");
+
+    const btn = $("#send"); btn.disabled = true; btn.textContent = "Envoi en cours…";
+    try{
+      const id = uuid();
+      const paths = await uploadPhotos(artisan.id, id, picker.get());
+      const { error } = await sb.from("requests").insert({
+        id, artisan_id: artisan.id, source,
+        client_name: v("#nom"), client_phone: v("#tel"), client_email: v("#mail") || null,
+        zone: v("#zone"), work_type: $("#type").value, description: v("#desc"), urgency: $("#urg").value,
+        photos: paths, consent: true
+      });
+      if(error) throw new Error(error.message);
+      startAnalysis(id);
+      $("#formbox").hidden = true;
+      $("#donetxt").textContent = `Merci ${v("#nom").split(" ")[0]}. ${artisan.name} a bien reçu votre demande et vous recontacte rapidement.`;
+      $("#done").hidden = false; window.scrollTo({top:0});
+    }catch(err){
+      showErr("L'envoi n'a pas abouti. Vérifiez votre connexion et réessayez. (" + err.message + ")");
+      btn.disabled = false; btn.textContent = "Envoyer ma demande";
+    }
+  });
+})();
+</script>
+</body>
+</html>

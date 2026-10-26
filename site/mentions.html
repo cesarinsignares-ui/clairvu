@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Mentions légales</title>
+<link rel="stylesheet" href="/style.css">
+<style>.panel p,.panel li{max-width:65ch} .todo{background:var(--stamp);color:var(--stamp-ink);padding:0 4px;border-radius:3px}</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Mentions légales et données personnelles</h1>
+  <section class="panel">
+    <h2>Éditeur du service</h2>
+    <p><span class="todo">[Nom, statut (ex. micro-entreprise), adresse, SIRET, e-mail]</span></p>
+    <p>Hébergement du site : Netlify, Inc. (États-Unis) <span class="todo">[adresse à compléter]</span>. Hébergement des données : Supabase (serveurs situés dans l'Union européenne <span class="todo">[région à confirmer]</span>).</p>
+  </section>
+  <section class="panel">
+    <h2>Vos données quand vous demandez un devis</h2>
+    <ul>
+      <li><b>Responsable du traitement :</b> l'artisan à qui vous envoyez la demande (son nom figure sur le formulaire).</li>
+      <li><b>Sous-traitant technique :</b> l'éditeur de ce service, qui héberge la demande pour le compte de l'artisan.</li>
+      <li><b>Données :</b> nom, téléphone, e-mail facultatif, commune, description et photos.</li>
+      <li><b>Finalité :</b> préparer et suivre votre devis. Aucune revente, aucune publicité.</li>
+      <li><b>Analyse automatique :</b> le texte et les photos sont analysés par un outil d'intelligence artificielle (Anthropic) pour préparer un résumé destiné à l'artisan. L'artisan vérifie tout avant de vous répondre.</li>
+      <li><b>Durée :</b> <span id="ret"></span> au maximum, puis suppression.</li>
+      <li><b>Vos droits :</b> accès, rectification, suppression, opposition. Écrivez à <span id="mail"></span> ou à l'artisan. Vous pouvez aussi saisir la CNIL (cnil.fr).</li>
+    </ul>
+    <p class="hint"><span class="todo">Texte à faire valider avant la mise en service.</span></p>
+  </section>
+</div>
+<script src="/config.js"></script>
+<script>
+  document.getElementById("ret").textContent = window.APP_CONFIG.RETENTION;
+  document.getElementById("mail").textContent = window.APP_CONFIG.CONTACT_EMAIL;
+</script>
+</body>
+</html>

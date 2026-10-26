@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0D6B66">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<title>Mes devis</title>
+<link rel="stylesheet" href="/style.css">
+<style>
+  .top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .brand{font-family:var(--display);font-weight:700;font-size:1.3rem}
+  .tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;background:var(--soft);padding:4px;border-radius:10px;position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
+  .tab{min-height:52px;border:0;background:transparent;color:var(--ink);font:600 .8rem/1.15 var(--body);padding:8px 2px;border-radius:7px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-align:center}
+  .tab[aria-selected="true"]{background:var(--surface);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+  .badge{display:inline-block;min-width:20px;padding:0 6px;border-radius:10px;background:var(--accent);color:var(--accent-ink);font-size:.72rem;font-weight:700}
+  .list{display:flex;flex-direction:column;gap:8px}
+  .item{display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:12px;border:1px solid var(--line);border-radius:10px;cursor:pointer;background:var(--surface);text-align:left;font:inherit;color:inherit;width:100%}
+  .item.new{box-shadow:inset 4px 0 0 var(--accent)}
+  .item .who{font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .item .what{color:var(--muted);font-size:.9rem;grid-column:1/-1}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
+  .chip{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:3px 8px;border-radius:20px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+  .chip.src{background:var(--soft);color:var(--ink);border-color:transparent}
+  .chip.urg{color:var(--warn);border-color:var(--warn)}
+  .chip.sent{color:var(--ok);border-color:var(--ok)}
+  .empty{padding:24px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:10px}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:.95rem;margin:0}
+  .kv dt{color:var(--muted)} .kv dd{margin:0;min-width:0;overflow-wrap:anywhere}
+  .photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+  .photos a{display:block;aspect-ratio:1;border-radius:8px;overflow:hidden;background:var(--soft);max-width:100%}
+  .photos img{width:100%;height:100%;object-fit:cover;display:block}
+  .ai{background:var(--soft);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px}
+  .ai ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:3px}
+  .safety{border:2px solid var(--warn);color:var(--warn);border-radius:8px;padding:8px 10px;font-weight:600}
+  .devis{border:1.5px dashed var(--ink);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:10px}
+  .stamp{align-self:flex-start;background:var(--stamp);color:var(--stamp-ink);font-family:var(--display);font-weight:700;letter-spacing:.06em;padding:2px 10px}
+  .q{display:flex;flex-direction:column;gap:8px}
+  .qrow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+  .qrow.tot{font-weight:700;border-bottom:0;font-size:1.05rem}
+  .qin{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .qin input{width:72px;padding:6px 8px}
+  .m{font-family:var(--mono);white-space:nowrap;font-variant-numeric:tabular-nums}
+  .todo{color:var(--warn);font-style:italic}
+  .bubble{background:var(--soft);border-radius:14px 14px 14px 4px;padding:12px 14px;font-size:.95rem;white-space:pre-wrap;overflow-wrap:anywhere}
+  .linkbox{font-family:var(--mono);font-size:.85rem;background:var(--soft);padding:8px 10px;border-radius:8px;overflow-wrap:anywhere}
+  .back{background:none;border:0;color:var(--accent);font:600 1rem var(--body);cursor:pointer;padding:4px 0;align-self:flex-start}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><span class="brand" id="brand"></span><button class="linkbtn" id="logout" hidden>Se déconnecter</button></div>
+
+  <!-- Connexion -->
+  <section class="panel" id="v-login" hidden>
+    <h1>Connexion</h1>
+    <form id="f-login" novalidate>
+      <div class="field"><label for="l-mail">E-mail</label><input id="l-mail" type="email" autocomplete="username" required></div>
+      <div class="field"><label for="l-pass">Mot de passe</label><input id="l-pass" type="password" autocomplete="current-password" required></div>
+      <p class="err" id="l-err" hidden></p>
+      <button class="btn" type="submit">Se connecter</button>
+    </form>
+    <p class="hint">Votre accès vous est fourni lors de la mise en service.</p>
+  </section>
+
+  <!-- Première configuration -->
+  <section class="panel" id="v-onboard" hidden>
+    <h1>Votre entreprise</h1>
+    <p class="muted">Ces informations apparaissent sur la page que vos clients ouvrent.</p>
+    <form id="f-onb" novalidate>
+      <div class="field"><label for="o-name">Nom affiché *</label><input id="o-name" maxlength="80" placeholder="Électricité Durand" required></div>
+      <div class="row2">
+        <div class="field"><label for="o-trade">Métier</label><select id="o-trade"></select></div>
+        <div class="field"><label for="o-phone">Téléphone</label><input id="o-phone" type="tel" maxlength="30"></div>
+      </div>
+      <div class="field"><label for="o-slug">Adresse de votre lien *</label><input id="o-slug" maxlength="40" required>
+        <span class="hint" id="o-slug-prev"></span></div>
+      <div class="row2">
+        <div class="field"><label for="o-rate">Taux horaire HT (€)</label><input id="o-rate" type="number" min="0" step="1" inputmode="decimal"></div>
+        <div class="field"><label for="o-travel">Déplacement HT (€)</label><input id="o-travel" type="number" min="0" step="1" inputmode="decimal"></div>
+      </div>
+      <p class="err" id="o-err" hidden></p>
+      <button class="btn" type="submit">Enregistrer</button>
+    </form>
+  </section>
+
+  <!-- Application -->
+  <div id="v-main" hidden style="display:flex;flex-direction:column;gap:16px">
+    <nav class="tabs" role="tablist">
+      <button class="tab" data-v="req" role="tab"><span class="badge" id="cnt">0</span>Demandes</button>
+      <button class="tab" data-v="sms" role="tab">Envoyer le lien</button>
+      <button class="tab" data-v="site" role="tab">Sur place</button>
+      <button class="tab" data-v="set" role="tab">Réglages</button>
+    </nav>
+
+    <section class="panel" id="p-req">
+      <div class="top"><h2>Demandes de devis</h2><button class="linkbtn" id="toggleArch">Voir les archivées</button></div>
+      <div class="list" id="list"></div>
+    </section>
+
+    <section class="panel" id="p-detail" hidden></section>
+
+    <section class="panel" id="p-sms" hidden>
+      <p class="eyebrow">Après un appel</p>
+      <h2>Envoyer votre lien par SMS</h2>
+      <p class="muted">Seulement aux clients que vous choisissez. Mettez le prénom, vérifiez le message, puis envoyez.</p>
+      <div class="row2">
+        <div class="field"><label for="s-pre">Prénom du client</label><input id="s-pre"></div>
+        <div class="field"><label for="s-tel">Portable</label><input id="s-tel" type="tel"></div>
+      </div>
+      <div class="field"><label for="s-msg">Message</label><textarea id="s-msg" rows="5"></textarea></div>
+      <div class="actions"><a class="btn" id="s-open" href="#">Ouvrir dans Messages</a><button class="btn ghost" id="s-copy" type="button">Copier le message</button></div>
+      <p class="eyebrow">Aperçu</p>
+      <div class="bubble" id="s-prev"></div>
+      <hr style="border:0;border-top:1px solid var(--line);margin:4px 0;width:100%">
+      <p class="eyebrow">Pour votre site ou votre fiche Google</p>
+      <div class="linkbox" id="publink"></div>
+      <div class="actions"><button class="btn ghost small" id="copylink" type="button">Copier le lien</button><button class="btn ghost small" id="copyhtml" type="button">Copier le bouton pour un site web</button></div>
+    </section>
+
+    <section class="panel" id="p-site" hidden>
+      <p class="eyebrow">Chez le client</p>
+      <h2>Relevé sur place</h2>
+      <p class="muted">Photos, constat et mesures au même endroit. Le brouillon de devis est prêt quand vous rentrez.</p>
+      <form id="f-site" novalidate>
+        <div class="row2">
+          <div class="field"><label for="a-nom">Client *</label><input id="a-nom" maxlength="80" required></div>
+          <div class="field"><label for="a-tel">Téléphone *</label><input id="a-tel" type="tel" maxlength="30" required></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label for="a-zone">Commune *</label><input id="a-zone" maxlength="80" required></div>
+          <div class="field"><label for="a-type">Type de travaux</label><select id="a-type"></select></div>
+        </div>
+        <div class="field"><label for="a-desc">Constat et travaux à prévoir *</label><textarea id="a-desc" rows="4" maxlength="2000" required></textarea>
+          <span class="hint">Astuce : touchez le micro du clavier pour dicter.</span></div>
+        <div class="field"><label for="a-mes">Mesures / repères</label><input id="a-mes" maxlength="300"></div>
+        <div class="row2">
+          <div class="field"><label for="a-h">Heures estimées</label><input id="a-h" type="number" min="0" step="0.5" inputmode="decimal"></div>
+          <div class="field"><label for="a-matp">Matériel HT (€)</label><input id="a-matp" type="number" min="0" step="1" inputmode="decimal"></div>
+        </div>
+        <div class="field"><label for="a-matd">Matériel (détail)</label><input id="a-matd" maxlength="300"></div>
+        <div class="picker" id="a-picker"></div>
+        <label class="check"><input type="checkbox" id="a-ok"> <span>Le client sait que ces informations et photos sont enregistrées pour préparer son devis.</span></label>
+        <p class="err" id="a-err" hidden></p>
+        <button class="btn" type="submit" id="a-send">Enregistrer le relevé</button>
+      </form>
+    </section>
+
+    <section class="panel" id="p-set" hidden>
+      <h2>Réglages</h2>
+      <form id="f-set" novalidate>
+        <div class="field"><label for="r-name">Nom affiché</label><input id="r-name" maxlength="80"></div>
+        <div class="row2">
+          <div class="field"><label for="r-trade">Métier</label><select id="r-trade"></select></div>
+          <div class="field"><label for="r-phone">Téléphone</label><input id="r-phone" type="tel" maxlength="30"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label for="r-rate">Taux horaire HT (€)</label><input id="r-rate" type="number" min="0" step="1" inputmode="decimal"></div>
+          <div class="field"><label for="r-travel">Déplacement HT (€)</label><input id="r-travel" type="number" min="0" step="1" inputmode="decimal"></div>
+        </div>
+        <button class="btn" type="submit">Enregistrer</button>
+      </form>
+      <hr style="border:0;border-top:1px solid var(--line);margin:4px 0;width:100%">
+      <h3>Installer l'application</h3>
+      <button class="btn ghost" id="install" type="button" hidden>Installer sur ce téléphone</button>
+      <p class="hint" id="install-help">iPhone : dans Safari, touchez Partager puis « Sur l'écran d'accueil ». Android : menu ⋮ puis « Installer l'application » ou « Ajouter à l'écran d'accueil ».</p>
+    </section>
+  </div>
+</div>
+
+<script src="/config.js"></script>
+<script src="/vendor/supabase-2.117.2.js"></script>
+<script src="/common.js"></script>
+<script>
+(function(){
+  const C = window.APP_CONFIG;
+  $("#brand").textContent = C.APP_NAME;
+  const SRC = { lien:"Lien SMS", site:"Site web", artisan:"Sur place" };
+  let artisan = null, requests = [], current = "req", openId = null, showArch = false, channel = null;
+
+  const show = id => ["#v-login","#v-onboard","#v-main"].forEach(s => $(s).hidden = s !== id);
+  const num = v => { const n = parseFloat(String(v).replace(",", ".")); return isNaN(n) ? null : n; };
+  const slugify = s => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,40);
+  const publicLink = () => location.origin + "/" + artisan.slug;
+  const smsHref = (tel, body) => `sms:${String(tel||"").replace(/[^\d+]/g,"")}?&body=${encodeURIComponent(body)}`;
+  const fill = (sel, list, val) => { sel.innerHTML = list.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join(""); if(val) sel.value = val; };
+  const fmtWhen = d => { const t = new Date(d), n = new Date();
+    const hm = t.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+    if(t.toDateString() === n.toDateString()) return "Aujourd'hui " + hm;
+    const y = new Date(n); y.setDate(n.getDate()-1);
+    if(t.toDateString() === y.toDateString()) return "Hier " + hm;
+    return t.toLocaleDateString("fr-FR",{day:"numeric",month:"short"}) + " " + hm; };
+  async function copy(text, okMsg){
+    try{ await navigator.clipboard.writeText(text); toast(okMsg || "Copié"); }
+    catch(_){ toast("Copie impossible. Sélectionnez le texte à la main."); }
+  }
+
+  // ---------- Connexion ----------
+  async function boot(){
+    const { data:{ session } } = await sb.auth.getSession();
+    if(!session){ $("#logout").hidden = true; show("#v-login"); return; }
+    $("#logout").hidden = false;
+    const { data, error } = await sb.from("artisans").select("*").maybeSingle();
+    if(error){ toast("Erreur de chargement : " + error.message); return; }
+    if(!data){
+      fill($("#o-trade"), TRADES, "autre");
+      show("#v-onboard"); return;
+    }
+    artisan = data;
+    startMain();
+  }
+
+  $("#f-login").addEventListener("submit", async e=>{
+    e.preventDefault();
+    const { error } = await sb.auth.signInWithPassword({ email:$("#l-mail").value.trim(), password:$("#l-pass").value });
+    $("#l-err").hidden = !error;
+    if(error){ $("#l-err").textContent = "E-mail ou mot de passe incorrect."; return; }
+    boot();
+  });
+  $("#logout").onclick = async ()=>{ if(channel) sb.removeChannel(channel); await sb.auth.signOut(); location.reload(); };
+
+  // ---------- Première configuration ----------
+  let slugTouched = false;
+  $("#o-name").addEventListener("input", ()=>{ if(!slugTouched){ $("#o-slug").value = slugify($("#o-name").value); } prevSlug(); });
+  $("#o-slug").addEventListener("input", ()=>{ slugTouched = true; prevSlug(); });
+  function prevSlug(){ $("#o-slug-prev").textContent = "Votre lien : " + location.origin + "/" + slugify($("#o-slug").value || "votre-nom"); }
+  $("#f-onb").addEventListener("submit", async e=>{
+    e.preventDefault();
+    const err = t => { $("#o-err").textContent = t; $("#o-err").hidden = !t; };
+    const name = $("#o-name").value.trim(), slug = slugify($("#o-slug").value);
+    if(name.length < 2) return err("Indiquez le nom de votre entreprise.");
+    if(slug.length < 3) return err("L'adresse du lien doit faire au moins 3 caractères.");
+    if(["app","mentions","index","client","vendor"].includes(slug)) return err("Cette adresse est réservée, choisissez-en une autre.");
+    const { data, error } = await sb.from("artisans").insert({
+      name, slug, trade:$("#o-trade").value, phone:$("#o-phone").value.trim() || null,
+      rate_hour:num($("#o-rate").value), travel_fee:num($("#o-travel").value)
+    }).select().single();
+    if(error) return err(/duplicate|unique/i.test(error.message) ? "Cette adresse de lien est déjà prise." : error.message);
+    err(""); artisan = data; startMain();
+  });
+
+  // ---------- Application ----------
+  function startMain(){
+    show("#v-main");
+    document.title = "Devis · " + artisan.name;
+    fill($("#a-type"), typesFor(artisan.trade));
+    fillSettings(); initSms();
+    tab("req"); load();
+    channel = sb.channel("req-" + artisan.id)
+      .on("postgres_changes", { event:"*", schema:"public", table:"requests", filter:"artisan_id=eq." + artisan.id }, ()=>load())
+      .subscribe();
+    document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) load(); });
+    setInterval(()=>{ if(!document.hidden) load(); }, 60000);
+  }
+
+  function tab(v){
+    current = v;
+    document.querySelectorAll(".tab").forEach(b=>b.setAttribute("aria-selected", b.dataset.v === v));
+    $("#p-req").hidden = !(v === "req" && !openId);
+    $("#p-detail").hidden = !(v === "req" && openId);
+    $("#p-sms").hidden = v !== "sms"; $("#p-site").hidden = v !== "site"; $("#p-set").hidden = v !== "set";
+    window.scrollTo({top:0});
+  }
+  document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{ if(b.dataset.v === "req") openId = null; tab(b.dataset.v); if(b.dataset.v==="req") renderList(); });
+
+  async function load(){
+    const { data, error } = await sb.from("requests").select("*").order("created_at",{ascending:false}).limit(300);
+    if(error){ toast("Impossible de charger les demandes."); return; }
+    requests = data || [];
+    $("#cnt").textContent = requests.filter(r=>r.status==="nouveau").length;
+    renderList();
+    if(openId) renderDetail(false);
+  }
+
+  $("#toggleArch").onclick = ()=>{ showArch = !showArch; $("#toggleArch").textContent = showArch ? "Masquer les archivées" : "Voir les archivées"; renderList(); };
+
+  function renderList(){
+    const rows = requests.filter(r => showArch ? r.status === "archive" : r.status !== "archive");
+    $("#list").innerHTML = rows.length ? rows.map(r=>`<button class="item ${r.status==="nouveau"?"new":""}" data-id="${r.id}">
+        <span class="who">${esc(r.client_name)} · ${esc(r.zone)}</span>
+        <span class="chips">${r.status==="envoye"?'<span class="chip sent">Envoyé</span>':""}${r.urgency==="Aujourd'hui"?'<span class="chip urg">Urgent</span>':""}<span class="chip src">${SRC[r.source]}</span></span>
+        <span class="what">${esc(r.work_type || "Demande")} · ${fmtWhen(r.created_at)} · ${(r.photos||[]).length} photo(s)</span></button>`).join("")
+      : `<div class="empty">${showArch ? "Aucune demande archivée." : "Aucune demande pour l'instant. Envoyez votre lien à un client depuis l'onglet « Envoyer le lien »."}</div>`;
+    $("#list").querySelectorAll(".item").forEach(b=>b.onclick=()=>{ openId = b.dataset.id; tab("req"); renderDetail(true); });
+  }
+
+  // ---------- Détail d'une demande ----------
+  let photoUrls = {};
+  async function renderDetail(fetchPhotos){
+    const r = requests.find(x=>x.id === openId);
+    if(!r){ openId = null; tab("req"); return; }
+    if(fetchPhotos && (r.photos||[]).length){
+      const { data } = await sb.storage.from("photos").createSignedUrls(r.photos, 3600);
+      photoUrls = {}; (data||[]).forEach(d=>{ if(d.signedUrl) photoUrls[d.path] = d.signedUrl; });
+    }
+    const ai = r.ai || {};
+    const rate = num(artisan.rate_hour), travel = num(artisan.travel_fee) || 0;
+    const mo = (r.hours != null && rate != null) ? r.hours * rate : null;
+    const total = travel + (mo || 0) + (num(r.material_price) || 0);
+    const missing = mo == null || r.material_price == null;
+    const questions = Array.isArray(ai.questions) ? ai.questions.filter(Boolean) : [];
+
+    let aiHtml;
+    if(r.ai_status === "done"){
+      aiHtml = `<div class="ai">
+        <p class="eyebrow">Résumé préparé automatiquement · à vérifier</p>
+        ${ai.securite ? `<p class="safety">${esc(ai.securite)}</p>` : ""}
+        ${ai.travail ? `<p><b>${esc(ai.travail)}</b></p>` : ""}
+        ${ai.sur_les_photos ? `<p><span class="muted">Sur les photos :</span> ${esc(ai.sur_les_photos)}</p>` : ""}
+        ${Array.isArray(ai.infos_manquantes) && ai.infos_manquantes.length ? `<div><span class="muted">Informations manquantes :</span><ul>${ai.infos_manquantes.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>` : ""}
+        ${Array.isArray(ai.materiel_probable) && ai.materiel_probable.length ? `<div><span class="muted">Matériel à prévoir (indicatif) :</span><ul>${ai.materiel_probable.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>` : ""}
+        ${questions.length ? `<div><span class="muted">Questions à poser au client :</span><ul>${questions.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>
+          <div class="actions"><a class="btn ghost small" id="askSms" href="#">Envoyer ces questions par SMS</a></div>` : ""}
+      </div>`;
+    } else if(r.ai_status === "error"){
+      aiHtml = `<div class="ai"><p>Le résumé automatique n'a pas pu être préparé. La demande complète est ci-dessus.</p><div class="actions"><button class="btn ghost small" id="retryAi" type="button">Relancer l'analyse</button></div></div>`;
+    } else {
+      aiHtml = `<div class="ai"><p class="muted">Résumé automatique en cours de préparation…</p></div>`;
+    }
+
+    $("#p-detail").innerHTML = `
+      <button class="back" id="back">← Toutes les demandes</button>
+      <div><p class="eyebrow">${SRC[r.source]} · ${fmtWhen(r.created_at)}</p><h2>${esc(r.client_name)} · ${esc(r.work_type || "Demande")}</h2></div>
+      <dl class="kv">
+        <dt>Téléphone</dt><dd><a href="tel:${esc(String(r.client_phone).replace(/[^\d+]/g,""))}">${esc(r.client_phone)}</a></dd>
+        ${r.client_email ? `<dt>E-mail</dt><dd>${esc(r.client_email)}</dd>` : ""}
+        <dt>Commune</dt><dd>${esc(r.zone)}</dd>
+        ${r.urgency ? `<dt>Urgence</dt><dd>${esc(r.urgency)}</dd>` : ""}
+        ${r.measures ? `<dt>Mesures</dt><dd>${esc(r.measures)}</dd>` : ""}
+      </dl>
+      <div><p class="eyebrow">${r.source === "artisan" ? "Votre constat" : "Message du client"}</p><p style="white-space:pre-wrap">${esc(r.description)}</p></div>
+      ${(r.photos||[]).length ? `<div class="photos">${r.photos.map((p,i)=>photoUrls[p] ? `<a href="${photoUrls[p]}" target="_blank" rel="noopener"><img src="${photoUrls[p]}" alt="Photo ${i+1}" loading="lazy"></a>` : "").join("")}</div>` : `<p class="hint">Aucune photo.</p>`}
+      ${aiHtml}
+      <div class="devis">
+        <span class="stamp">BROUILLON · à valider par vous</span>
+        <div class="q">
+          <div class="qrow"><span>Déplacement <span class="hint">forfait</span></span><span class="m">${artisan.travel_fee != null ? eur(travel) : '<span class="todo">tarif à régler</span>'}</span></div>
+          <div class="qrow"><span class="qin">Main-d'œuvre <input id="d-h" type="number" min="0" step="0.5" inputmode="decimal" value="${r.hours ?? ""}" placeholder="h" aria-label="Heures"> h ${rate != null ? "× " + eur(rate) : '<span class="todo">taux à régler</span>'}</span><span class="m">${mo != null ? eur(mo) : '<span class="todo">à compléter</span>'}</span></div>
+          <div class="qrow"><span class="qin">Matériel <input id="d-mp" type="number" min="0" step="1" inputmode="decimal" value="${r.material_price ?? ""}" placeholder="€" aria-label="Prix du matériel HT"> €</span><span class="m">${r.material_price != null ? eur(r.material_price) : '<span class="todo">à compléter</span>'}</span></div>
+          <input id="d-md" maxlength="300" value="${esc(r.material_desc ?? "")}" placeholder="Détail du matériel" aria-label="Détail du matériel">
+          <div class="qrow tot"><span>Total estimé HT</span><span class="m">${eur(total)}</span></div>
+          ${missing ? '<p class="todo" style="font-size:.85rem">Des postes restent à compléter.</p>' : ""}
+        </div>
+        <p class="hint">Rien n'est envoyé au client sans votre action. Ce brouillon sert à préparer votre devis officiel (mentions légales et TVA selon votre régime).</p>
+        <div class="actions">
+          <a class="btn small" id="devSms" href="#">Envoyer l'estimation par SMS</a>
+          <button class="btn ghost small" id="devCopy" type="button">Copier l'estimation</button>
+        </div>
+      </div>
+      <div class="actions">
+        ${r.status !== "envoye" ? `<button class="btn ghost small" id="markSent" type="button">Marquer « devis envoyé »</button>` : `<button class="btn ghost small" id="markNew" type="button">Remettre en « nouveau »</button>`}
+        ${r.status !== "archive" ? `<button class="btn ghost small" id="arch" type="button">Archiver</button>` : `<button class="btn ghost small" id="unarch" type="button">Désarchiver</button>`}
+      </div>`;
+
+    const firstName = r.client_name.split(" ")[0];
+    const estimate = () => {
+      const lines = [`Estimation – ${artisan.name}`, `Pour : ${r.client_name}, ${r.zone}`, `Travaux : ${ai.travail || r.work_type || r.description.slice(0,120)}`, ""];
+      if(artisan.travel_fee != null) lines.push(`- Déplacement : ${eur(travel)}`);
+      if(mo != null) lines.push(`- Main-d'œuvre : ${String(r.hours).replace(".",",")} h × ${eur(rate)} = ${eur(mo)}`);
+      if(r.material_price != null) lines.push(`- Matériel${r.material_desc ? " (" + r.material_desc + ")" : ""} : ${eur(r.material_price)}`);
+      lines.push("", `Total estimé HT : ${eur(total)}`, "Estimation indicative, le devis définitif suit.");
+      return lines.join("\n");
+    };
+    $("#back").onclick = ()=>{ openId = null; tab("req"); renderList(); };
+    const save = async patch => { const { error } = await sb.from("requests").update(patch).eq("id", r.id); if(error){ toast("Enregistrement impossible : " + error.message); return false; } Object.assign(r, patch); return true; };
+    const saveAndShow = async patch => { if(await save(patch)) renderDetail(false); };
+    $("#d-h").onchange = e => saveAndShow({ hours: num(e.target.value) });
+    $("#d-mp").onchange = e => saveAndShow({ material_price: num(e.target.value) });
+    $("#d-md").onchange = e => saveAndShow({ material_desc: e.target.value.trim() || null });
+    $("#devSms").href = smsHref(r.client_phone, `Bonjour ${firstName},\n\n` + estimate());
+    $("#devCopy").onclick = ()=>copy(estimate(), "Estimation copiée");
+    const ask = $("#askSms"); if(ask) ask.href = smsHref(r.client_phone, `Bonjour ${firstName}, c'est ${artisan.name}. Pour préparer votre devis, pouvez-vous me préciser :\n- ` + questions.join("\n- ") + "\nMerci !");
+    const retry = $("#retryAi"); if(retry) retry.onclick = async ()=>{ await save({ ai_status:"pending" }); startAnalysis(r.id); toast("Analyse relancée"); };
+    const st = (id, patch, msg) => { const b = $("#"+id); if(b) b.onclick = async ()=>{ await save(patch); toast(msg); if(patch.status==="archive"){ openId=null; tab("req"); } load(); }; };
+    st("markSent", { status:"envoye" }, "Marquée comme envoyée");
+    st("markNew", { status:"nouveau" }, "Remise en nouveau");
+    st("arch", { status:"archive" }, "Demande archivée");
+    st("unarch", { status:"nouveau" }, "Demande désarchivée");
+  }
+
+  // ---------- Lien par SMS ----------
+  let smsEdited = false;
+  function initSms(){
+    const link = publicLink();
+    $("#publink").textContent = link;
+    const tpl = p => `Bonjour ${p || "[prénom]"}, c'est ${artisan.name}. Pour préparer votre devis, envoyez-moi 2 ou 3 photos et une courte description ici : ${link}?s=sms\nÇa prend 2 minutes. Merci !`;
+    const upd = ()=>{ if(!smsEdited) $("#s-msg").value = tpl($("#s-pre").value.trim()); $("#s-prev").textContent = $("#s-msg").value; $("#s-open").href = smsHref($("#s-tel").value, $("#s-msg").value); };
+    $("#s-pre").oninput = upd; $("#s-tel").oninput = upd;
+    $("#s-msg").oninput = ()=>{ smsEdited = true; upd(); };
+    $("#s-open").onclick = ()=>{ setTimeout(()=>{ $("#s-pre").value=""; $("#s-tel").value=""; smsEdited=false; upd(); }, 1500); };
+    $("#s-copy").onclick = ()=>copy($("#s-msg").value, "Message copié");
+    $("#copylink").onclick = ()=>copy(link, "Lien copié");
+    $("#copyhtml").onclick = ()=>copy(`<a href="${link}" style="display:inline-block;padding:12px 18px;background:#0D6B66;color:#fff;border-radius:8px;font-weight:700;text-decoration:none">Demander un devis avec photos</a>`, "Code du bouton copié");
+    upd();
+  }
+
+  // ---------- Relevé sur place ----------
+  const sitePicker = makePicker($("#a-picker"));
+  $("#f-site").addEventListener("submit", async e=>{
+    e.preventDefault();
+    const v = id => $(id).value.trim();
+    const err = t => { $("#a-err").textContent = t; $("#a-err").hidden = !t; };
+    if(!v("#a-nom") || !v("#a-tel") || !v("#a-zone") || v("#a-desc").length < 3) return err("Remplissez les champs marqués d'un *.");
+    if(!$("#a-ok").checked) return err("Cochez la case d'information du client.");
+    err("");
+    const btn = $("#a-send"); btn.disabled = true; btn.textContent = "Enregistrement…";
+    try{
+      const id = uuid();
+      const paths = await uploadPhotos(artisan.id, id, sitePicker.get());
+      const { error } = await sb.from("requests").insert({
+        id, artisan_id: artisan.id, source:"artisan",
+        client_name:v("#a-nom"), client_phone:v("#a-tel"), zone:v("#a-zone"), work_type:$("#a-type").value,
+        description:v("#a-desc"), measures:v("#a-mes") || null, urgency:"À planifier",
+        hours:num(v("#a-h")), material_desc:v("#a-matd") || null, material_price:num(v("#a-matp")),
+        photos:paths, consent:true
+      });
+      if(error) throw new Error(error.message);
+      startAnalysis(id);
+      $("#f-site").reset(); sitePicker.reset();
+      toast("Relevé enregistré");
+      await load(); openId = id; tab("req"); renderDetail(true);
+    }catch(ex){ err("Enregistrement impossible : " + ex.message); }
+    finally{ btn.disabled = false; btn.textContent = "Enregistrer le relevé"; }
+  });
+
+  // ---------- Réglages ----------
+  function fillSettings(){
+    $("#r-name").value = artisan.name; fill($("#r-trade"), TRADES, artisan.trade);
+    $("#r-phone").value = artisan.phone || ""; $("#r-rate").value = artisan.rate_hour ?? ""; $("#r-travel").value = artisan.travel_fee ?? "";
+  }
+  $("#f-set").addEventListener("submit", async e=>{
+    e.preventDefault();
+    const patch = { name:$("#r-name").value.trim() || artisan.name, trade:$("#r-trade").value, phone:$("#r-phone").value.trim() || null,
+      rate_hour:num($("#r-rate").value), travel_fee:num($("#r-travel").value) };
+    const { data, error } = await sb.from("artisans").update(patch).eq("id", artisan.id).select().single();
+    if(error) return toast("Enregistrement impossible : " + error.message);
+    artisan = data; fill($("#a-type"), typesFor(artisan.trade)); smsEdited = false; initSms(); toast("Réglages enregistrés");
+  });
+
+  // ---------- Installation (PWA) ----------
+  let deferred = null;
+  window.addEventListener("beforeinstallprompt", e=>{ e.preventDefault(); deferred = e; $("#install").hidden = false; });
+  $("#install").onclick = async ()=>{ if(!deferred) return; deferred.prompt(); await deferred.userChoice; deferred = null; $("#install").hidden = true; };
+  if(window.matchMedia("(display-mode: standalone)").matches || navigator.standalone){ $("#install-help").textContent = "L'application est installée sur cet appareil."; }
+  if("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(()=>{});
+
+  sb.auth.onAuthStateChange((ev)=>{ if(ev === "SIGNED_OUT") location.reload(); });
+  boot();
+})();
+</script>
+</body>
+</html>
