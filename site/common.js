@@ -98,7 +98,7 @@
 
   const TYPES = {
     "plombier":   ["Fuite","Débouchage","Chauffe-eau / ballon","Sanitaire (WC, lavabo, douche)","Installation","Autre"],
-    "électricien":["Panne / disjoncteur","Prises et interrupteurs","Tableau électrique","Éclairage","Borne de recharge","Autre"],
+    "électricien":["Panne / disjoncteur","Prises et interrupteurs","Tableau électrique","Éclairage","Borne de recharge","Alarme / vidéosurveillance","Portail motorisé","Interphone / visiophone","Autre"],
     "chauffagiste":["Panne chaudière","Entretien","Radiateurs","Pompe à chaleur","Installation","Autre"],
     "couvreur":   ["Fuite toiture","Tuiles / ardoises","Gouttières","Zinguerie","Isolation","Autre"],
     "autre":      ["Dépannage","Réparation","Installation","Rénovation","Autre"]
