@@ -73,3 +73,8 @@ textarea{resize:vertical}
 
 .brand{display:inline-flex;align-items:center;gap:8px}
 .brandline{display:flex;align-items:center;gap:8px}
+
+.pbtns{margin:8px 0}
+.pbtns .pcam{position:relative;display:flex;align-items:center;justify-content:center;gap:8px;width:100%;cursor:pointer}
+.pcam input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.pbtns[hidden]{display:none}

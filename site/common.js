@@ -48,19 +48,25 @@
   function makePicker(root){
     const id = "pk"+(++pickerN); let photos = [];
     root.innerHTML = `<div class="ptop"><span>Photos</span><span class="pcount">0/5</span></div>
+      <div class="pbtns">
+        <label class="btn pcam" for="${id}c">
+          <svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20"><path d="M4 8h3l2-3h6l2 3h3v11H4z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="13" r="3.5" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+          Prendre une photo
+          <input id="${id}c" type="file" accept="image/*" capture="environment">
+        </label>
+      </div>
       <label class="drop" for="${id}">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
-        <span class="big">Prendre ou ajouter des photos</span>
+        <span class="big">Choisir dans la galerie</span>
         <span class="hint">Jusqu'à 5 photos. Elles sont réduites automatiquement.</span>
         <input id="${id}" type="file" accept="image/*" multiple>
       </label>
       <div class="thumbs"></div>`;
-    const inp = root.querySelector("input"), drop = root.querySelector(".drop");
+    const inp = root.querySelector(".drop input"), cam = root.querySelector(".pcam input"), drop = root.querySelector(".drop"), btns = root.querySelector(".pbtns");
     function draw(){
       root.querySelector(".pcount").textContent = photos.length+"/5";
       root.querySelector(".thumbs").innerHTML = photos.map((p,i)=>`<div class="th"><div class="img"><img src="${p.preview}" alt="Photo ${i+1}"><button type="button" class="x" data-i="${i}" aria-label="Retirer la photo">×</button></div><span class="sz">${fmtSize(p.before)} → ${fmtSize(p.after)}</span></div>`).join("");
       root.querySelectorAll(".x").forEach(b=>b.onclick=()=>{ URL.revokeObjectURL(photos[+b.dataset.i].preview); photos.splice(+b.dataset.i,1); draw(); });
-      drop.hidden = photos.length >= 5;
+      drop.hidden = btns.hidden = photos.length >= 5;
     }
     async function add(files){
       const list = [...files].filter(f=>f.type.startsWith("image/") || /\.(heic|heif|jpe?g|png|webp)$/i.test(f.name));
@@ -70,6 +76,7 @@
       draw();
     }
     inp.addEventListener("change", ()=>{ add(inp.files); inp.value=""; });
+    cam.addEventListener("change", ()=>{ add(cam.files); cam.value=""; });
     ["dragenter","dragover"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("over");}));
     ["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("over");}));
     drop.addEventListener("drop", e=>add(e.dataTransfer.files));
